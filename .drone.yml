@@ -4,14 +4,15 @@ name: unit-tests
 
 steps:
     - name: bootstrap
-      image: signalwire/freeswitch-public-base:bullseye
+      image: signalwire/freeswitch-public-base:bookworm
       pull: always
       commands:
       - cat /proc/sys/kernel/core_pattern
+      - apt-get update && apt-get -yq install autoconf
       - ./bootstrap.sh -j
 
     - name: configure
-      image: signalwire/freeswitch-public-base:bullseye
+      image: signalwire/freeswitch-public-base:bookworm
       pull: always
       environment:
         REPOTOKEN:
@@ -33,7 +34,7 @@ steps:
       - ./configure --enable-address-sanitizer --enable-fake-dlclose
 
     - name: build
-      image: signalwire/freeswitch-public-base:bullseye
+      image: signalwire/freeswitch-public-base:bookworm
       pull: always
       environment:
         REPOTOKEN:
@@ -50,7 +51,7 @@ steps:
       - ./build.sh
 
     - name: run-tests
-      image: signalwire/freeswitch-public-base:bullseye
+      image: signalwire/freeswitch-public-base:bookworm
       pull: always
       environment:
         REPOTOKEN:
@@ -87,6 +88,7 @@ steps:
 trigger:
   branch:
   - master
+  - sb14
   event:
   - pull_request
   - push
@@ -97,13 +99,14 @@ name: scan-build
 
 steps:
     - name: bootstrap
-      image: signalwire/freeswitch-public-base:bullseye
+      image: signalwire/freeswitch-public-base:bookworm
       pull: always
       commands:
+      - apt-get update && apt-get -yq install autoconf
       - ./bootstrap.sh -j
 
     - name: configure
-      image: signalwire/freeswitch-public-base:bullseye
+      image: signalwire/freeswitch-public-base:bookworm
       pull: always
       environment:
         REPOTOKEN:
@@ -140,7 +143,7 @@ steps:
       - ./configure
 
     - name: scan-build
-      image: signalwire/freeswitch-public-base:bullseye
+      image: signalwire/freeswitch-public-base:bookworm
       pull: always
       environment:
         REPOTOKEN:
@@ -172,12 +175,13 @@ steps:
 trigger:
   branch:
   - master
+  - sb14
   event:
   - pull_request
   - push
 
 ---
 kind: signature
-hmac: 780e4aaee61e3683ea4a8d6fe5131f7c9e62ebad727546013f18df0fca80d705
+hmac: fbc5f7a2386049cd9dae2264f35823177b0b26d95feee1196fb5e9bb9a40cde3
 
 ...
