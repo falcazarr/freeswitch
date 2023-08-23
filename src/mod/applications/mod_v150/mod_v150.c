@@ -35,7 +35,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_v150_load)
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "%s module loaded!\n", modname);
 
     SWITCH_ADD_APP(app_interface, "sprt_tx", "V150 SPRT Application", "V150 SPRT Application", v150_sprt_tx_function, "", SAF_NONE);
-    SWITCH_ADD_API(api_interface, "v150", "V150 API - sprt tx", v150_sprt_tx_api, "");
+    SWITCH_ADD_API(api_interface, "v150_sprt_tx", "V150 API - sprt tx", v150_sprt_tx_api, "");
 
     return SWITCH_STATUS_SUCCESS;
 }
