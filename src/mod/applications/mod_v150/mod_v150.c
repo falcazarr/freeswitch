@@ -9,8 +9,14 @@ SWITCH_MODULE_DEFINITION(mod_v150, mod_v150_load, mod_v150_shutdown, NULL);
 
 SWITCH_STANDARD_APP(v150_sprt_tx_function)
 {
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "SPRT TX App executed!\n");
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "SPRT TX Application executed!\n");
 }
+
+SWITCH_STANDARD_API(v150_sprt_tx_api)
+{
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "SPRT TX API executed!\n");
+}
+
 
 SWITCH_MODULE_LOAD_FUNCTION(mod_v150_load)
 {
@@ -28,7 +34,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_v150_load)
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "%s module loaded!\n", modname);
 
     SWITCH_ADD_APP(app_interface, "sprt_tx", "V150 SPRT Application", "V150 SPRT Application", v150_sprt_tx_function, "", SAF_NONE);
-    SWITCH_ADD_API(api_interface, "sprt_tx", "SPRT TX (V150)", v150_sprt_tx_function, "");
+    SWITCH_ADD_API(api_interface, "sprt_tx", "SPRT TX (V150)", v150_sprt_tx_api, "");
 
     return SWITCH_STATUS_SUCCESS;
 }
