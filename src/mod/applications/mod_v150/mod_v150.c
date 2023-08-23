@@ -15,6 +15,7 @@ SWITCH_STANDARD_APP(v150_sprt_tx_function)
 SWITCH_MODULE_LOAD_FUNCTION(mod_v150_load)
 {
     switch_application_interface_t *app_interface;
+    switch_api_interface_t *api_interface;
 
     memset(&v150_globals, 0, sizeof(v150_globals));
     v150_globals.pool = pool;
