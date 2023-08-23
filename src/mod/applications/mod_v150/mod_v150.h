@@ -32,6 +32,11 @@ struct v150_globals {
 extern struct v150_globals v150_globals;
 
 typedef enum {
+	FALSE = 0,
+	TRUE = 1
+}
+
+typedef enum {
 	FUNCTION_TX,
 	FUNCTION_RX,
 	FUNCTION_GW

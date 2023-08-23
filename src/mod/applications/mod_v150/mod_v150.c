@@ -24,7 +24,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_v150_load)
     *module_interface = switch_loadable_module_create_module_interface(pool, modname);
     switch_mutex_init(&v150_globals.mutex, SWITCH_MUTEX_NESTED, pool);
 
-    load_configuration(false);
+    load_configuration(FALSE);
 
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "%s module loaded!\n", modname);
     SWITCH_ADD_APP(app_interface, "v150_app", "V150 App", "V150 Development", v150_function, "", SAF_NONE);
