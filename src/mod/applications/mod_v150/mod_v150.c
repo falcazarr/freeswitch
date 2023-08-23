@@ -1,10 +1,17 @@
 #include <switch.h>
+#include "mod_v150.h"
+
+struct sprt_globals sprt_globals = { 0 };
 
 SWITCH_MODULE_LOAD_FUNCTION(mod_v150_load);
 SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_v150_shutdown);
 SWITCH_MODULE_DEFINITION(mod_v150, mod_v150_load, mod_v150_shutdown, NULL);
 
-SWITCH_STANDARD_APP(v150_function);
+// The V150 application that gets registered with FreeSWITCH
+SWITCH_STANDARD_APP(v150_function)
+{
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Simple app executed!\n");
+}
 
 // Function executed when the module is loaded
 SWITCH_MODULE_LOAD_FUNCTION(mod_v150_load)
@@ -24,10 +31,3 @@ SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_v150_shutdown)
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "mod_v150 unloaded!\n");
     return SWITCH_STATUS_SUCCESS;
 }
-
-// The V150 application that gets registered with FreeSWITCH
-SWITCH_STANDARD_APP(v150_function)
-{
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Simple app executed!\n");
-}
-
