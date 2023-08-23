@@ -52,3 +52,4 @@ struct mod_v150_log_data {
 typedef struct mod_v150_log_data mod_v150_log_data_t;
 
 void mod_v150_log_message(void *session, int level, const char *msg);
+switch_status_t load_configuration(switch_bool_t reload);
