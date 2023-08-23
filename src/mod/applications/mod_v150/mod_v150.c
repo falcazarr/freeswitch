@@ -7,13 +7,11 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_v150_load);
 SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_v150_shutdown);
 SWITCH_MODULE_DEFINITION(mod_v150, mod_v150_load, mod_v150_shutdown, NULL);
 
-// The V150 application that gets registered with FreeSWITCH
-SWITCH_STANDARD_APP(v150_function)
+SWITCH_STANDARD_APP(v150_sprt_tx_function)
 {
-    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Simple app executed!\n");
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "SPRT TX App executed!\n");
 }
 
-// Function executed when the module is loaded
 SWITCH_MODULE_LOAD_FUNCTION(mod_v150_load)
 {
     switch_application_interface_t *app_interface;
@@ -27,15 +25,23 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_v150_load)
     load_configuration(SWITCH_FALSE);
 
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "%s module loaded!\n", modname);
-    SWITCH_ADD_APP(app_interface, "v150_app", "V150 App", "V150 Development", v150_function, "", SAF_NONE);
+
+    SWITCH_ADD_APP(app_interface, "sprt_tx", "V150 SPRT Application", "V150 SPRT Application", v150_sprt_tx_function, "", SAF_NONE);
+    SWITCH_ADD_API(api_interface, "sprt_tx", "SPRT TX (V150)", v150_sprt_tx_function, "");
 
     return SWITCH_STATUS_SUCCESS;
 }
 
-// Function executed when the module is unloaded
 SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_v150_shutdown)
 {
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "mod_v150 unloaded!\n");
+
+    if(v150_globals.config_pool) {
+        switch_core_destroy_memory_pool(&v150_globals.config_pool);
+    }
+
+    memset(&v150_globals, 0, sizeof(v150_globals));
+
     return SWITCH_STATUS_SUCCESS;
 }
 
