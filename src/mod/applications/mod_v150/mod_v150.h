@@ -1,7 +1,7 @@
 #include <switch.h>
 
 /* The global stuff */
-struct sprt_globals {
+struct v150_globals {
 	switch_memory_pool_t *pool;
 	switch_memory_pool_t *config_pool;
 	switch_mutex_t *mutex;
@@ -29,8 +29,7 @@ struct sprt_globals {
   int sprt_rx_reinvite_packet_count;
 };
 
-extern struct sprt_globals sprt_globals;
-
+extern struct v150_globals v150_globals;
 
 typedef enum {
 	FUNCTION_TX,
@@ -38,22 +37,18 @@ typedef enum {
 	FUNCTION_GW
 } mod_sprt_application_mode_t;
 
-struct mod_sprt_log_data {
+typedef enum {
+	SPRT_MODE_AUDIO,
+	SPRT_MODE_VBD,
+  SPRT_MODE_MR	
+} mod_sprt_mode_t;
+
+struct mod_v150_log_data {
 	switch_log_level_t verbose_log_level;
 	switch_core_session_t *session;
 	FILE *trace_file;
 };
-typedef struct mod_sprt_log_data mod_sprt_log_data_t;
 
-/* Functions - below */
+typedef struct mod_v150_log_data mod_v150_log_data_t;
 
-/* For Emacs:
- * Local Variables:
- * mode:c
- * indent-tabs-mode:t
- * tab-width:4
- * c-basic-offset:4
- * End:
- * For VIM:
- * vim:set softtabstop=4 shiftwidth=4 tabstop=4 noet:
- */
+void mod_v150_log_message(void *session, int level, const char *msg);
