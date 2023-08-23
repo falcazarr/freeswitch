@@ -9,12 +9,16 @@ SWITCH_MODULE_DEFINITION(mod_v150, mod_v150_load, mod_v150_shutdown, NULL);
 
 SWITCH_STANDARD_APP(v150_sprt_tx_function)
 {
+    switch_status_t status = SWITCH_STATUS_SUCCESS;
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "SPRT TX Application executed!\n");
+    return status;
 }
 
 SWITCH_STANDARD_API(v150_sprt_tx_api)
 {
+    switch_status_t status = SWITCH_STATUS_SUCCESS;
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "SPRT TX API executed!\n");
+    return status;
 }
 
 
