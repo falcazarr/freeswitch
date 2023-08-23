@@ -16,9 +16,8 @@ SWITCH_STANDARD_APP(v150_sprt_tx_function)
 
 SWITCH_STANDARD_API(v150_sprt_tx_api)
 {
-    switch_status_t status = SWITCH_STATUS_SUCCESS;
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "SPRT TX API executed!\n");
-    return status;
+    return;
 }
 
 
