@@ -1146,6 +1146,7 @@ typedef enum {
 	SWITCH_MESSAGE_INDICATE_APPLICATION_EXEC_COMPLETE,
 	SWITCH_MESSAGE_INDICATE_PHONE_EVENT,
 	SWITCH_MESSAGE_INDICATE_T38_DESCRIPTION,
+	SWITCH_MESSAGE_INDICATE_SPRT_DESCRIPTION,
 	SWITCH_MESSAGE_INDICATE_UDPTL_MODE,
 	SWITCH_MESSAGE_INDICATE_CLEAR_PROGRESS,
 	SWITCH_MESSAGE_INDICATE_JITTER_BUFFER,
@@ -1191,6 +1192,22 @@ typedef struct {
 	uint16_t local_port;
 	const char *sdp_o_line;
 } switch_t38_options_t;
+
+typdef struct {
+	uint8_t modem_relay_type;
+	uint8_t media_gateway_type;
+	uint8_t mr_mods;
+	uint8_t cdsc_select;
+	switch_bool_t jm_delay;
+	const char *media_entry;
+	const char *attribute entry;
+	const char *remote_ip;
+	uint16_t remote_port;
+	const char *local_ip;
+	uint16_t local_port;
+	const char *sdp_o_line;
+	
+} switch_sprt_options_t;
 
 /*!
   \enum switch_stack_t
@@ -1658,6 +1675,16 @@ typedef enum {
 	CF_APP_T38_NEGOTIATED = (1 << 4),
 	CF_APP_T38_POSSIBLE = (1 << 5)
 } switch_channel_app_flag_t;
+
+typedef enum {
+	CF_APP_SPRT_TAGGED = (1 << 0),
+	CF_APP_SPRT = (1 << 1),
+	CF_APP_SPRT_REQ = (1 << 2),
+	CF_APP_SPRT_FAIL = (1 << 3),
+	CF_APP_SPRT_NEGOTIATED = (1 << 4),
+	CF_APP_SPRT_POSSIBLE = (1 << 5)
+} switch_channel_sprt_app_flag_t;
+
 
 
 /*!

@@ -1,6 +1,266 @@
 #include "mod_v150.h"
-#include <spandsp/version.h>
+#include "udptl.h"
 
+typedef enum {
+	SPRT_MODE,
+	VBD_MODE,
+} transport_mode_t;
+
+typedef enum {
+	SPRT_MODE_UNKNOWN = 0,
+	SPRT_MODE_NEGOTIATED = 1,
+	SPRT_MODE_REQUESTED = 2,
+	SPRT_MODE_REFUSED = -1,
+} sprt_mode_t;
+
+const char * get_sprt_status(sprt_mode_t mode)
+{
+	const char *str = "off";
+	switch(mode) {
+	case SPRT_MODE_NEGOTIATED:
+		str = "negotiated";
+		break;
+	case SPRT_MODE_REQUESTED:
+		str = "requested";
+		break;
+	case SPRT_MODE_REFUSED:
+		str = "refused";
+		break;
+	default:
+		break;
+	}
+	return str;
+}
+
+struct pvt_s {
+	switch_core_session_t *session;
+	mod_sprt_application_mode_t app_mode;
+	switch_mutex_t *mutex;
+	udptl_state_t *udptl_state;
+	char *ident;
+	char *header;
+	char *timezone;
+	int verbose;
+	switch_log_level_t verbose_log_level;
+	int caller;
+	int done;
+	sprt_mode_t sprt_mode;
+
+	struct pvt_s *next;
+};
+
+typedef struct pvt_s pvt_t;
+
+static void launch_timer_thread(void);
+
+static struct {
+	pvt_t *head;
+	switch_mutex_t *mutex;
+	switch_thread_t *thread;
+	int thread_running;
+} sprt_state_list;
+
+static int add_pvt(pvt_t *pvt)
+{
+	int r = 0;
+
+	if (sprt_state_list.thread_running == 1) {
+		switch_mutex_lock(sprt_state_list.mutex);
+		pvt->next = sprt_state_list.head;
+		sprt_state_list.head = pvt;
+		switch_mutex_unlock(sprt_state_list.mutex);
+		r = 1;
+		wake_thread(0);
+	} else {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "Error launching thread\n");
+	}
+
+	return r;
+
+}
+
+static int del_pvt(pvt_t *del_pvt)
+{
+	pvt_t *p, *l = NULL;
+	int r = 0;
+
+
+	switch_mutex_lock(sprt_state_list.mutex);
+
+	for (p = sprt_state_list.head; p; p = p->next) {
+		if (p == del_pvt) {
+			if (l) {
+				l->next = p->next;
+			} else {
+				sprt_state_list.head = p->next;
+			}
+			p->next = NULL;
+			r = 1;
+			break;
+		}
+
+		l = p;
+	}
+
+	switch_mutex_unlock(sprt_state_list.mutex);
+
+	wake_thread(0);
+
+	return r;
+}
+
+static void wake_thread(int force)
+{
+	if (force) {
+		switch_thread_cond_signal(v150_globals.cond);
+		return;
+	}
+
+	if (switch_mutex_trylock(v150_globals.cond_mutex) == SWITCH_STATUS_SUCCESS) {
+		switch_thread_cond_signal(v150_globals.cond);
+		switch_mutex_unlock(v150_globals.cond_mutex);
+	}
+}
+
+static void launch_timer_thread(void)
+{
+
+	switch_threadattr_t *thd_attr = NULL;
+
+	switch_threadattr_create(&thd_attr, v150_globals.pool);
+	switch_threadattr_stacksize_set(thd_attr, SWITCH_THREAD_STACKSIZE);
+	switch_thread_create(&sprt_state_list.thread, thd_attr, timer_thread_run, NULL, v150_globals.pool);
+}
+
+void send_reinvite_with_sdp_payload(switch_core_session_t *session, mod_sprt_application_mode_t app_mode){
+	pvt_t *pvt;
+	switch_channel_t *channel = switch_core_session_get_channel(session);
+	switch_codec_t read_codec = { 0 };
+	switch_codec_t write_codec = { 0 };
+	switch_frame_t *read_frame = { 0 };
+	switch_frame_t write_frame = { 0 };
+	switch_codec_implementation_t read_impl = { 0 };
+	int16_t *buf = NULL;
+	uint32_t req_counter = 0;
+
+	switch_core_session_get_read_impl(session, &read_impl);
+
+	session_counter_increment();
+
+	pvt = pvt_init(session, app_mode);
+	switch_channel_set_private(channel, "_sprt_pvt", pvt);
+
+	buf = switch_core_session_alloc(session, SWITCH_RECOMMENDED_BUFFER_SIZE);
+
+	while (switch_channel_ready(channel)) {
+		int tx = 0
+		switch_status_t status;
+
+		switch_ivr_parse_all_events(session);
+
+		status = switch_core_session_read_frame(session, &read_frame, SWITCH_IO_FLAG_NONE, 0);
+
+		if (!SWITCH_READ_ACCEPTABLE(status) || pvt->done) {
+			goto done;
+		}
+
+		switch (pvt->sprt_mode) {
+			case SPRT_MODE_REQUESTED:
+				{
+				    if (switch_channel_test_app_flag_key("SPRT", channel, CF_APP_SPRT_FAIL)) {
+				    	pvt->sprt_mode = SPRT_MODE_REFUSED;
+				    	continue;
+				    } else if (switch_channel_test_app_flag_key("SPRT", channel, CF_APP_SPRT)) {
+				    	switch_core_session_message_t msg = { 0 };
+				    	pvt->sprt_mode = SPRT_MODE_NEGOTIATED;
+				    	switch_channel_set_app_flag_key("SPRT", channel, CF_APP_SPRT_NEGOTIATED);
+				    	if (sprt_init(pvt, SPRT_MODE) == SWITCH_STATUS_SUCCESS) {
+				    		configure_sprt(pvt);
+				    		/* add to timer thread processing */
+				    		if (!add_pvt(pvt)) {
+				    			switch_channel_hangup(channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
+				    		}
+				    	} else {
+				    		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Cannot initialize SPRT - sprt_init (SPRT_REQ)");
+				    		switch_channel_set_variable(channel, SWITCH_CURRENT_APPLICATION_RESPONSE_VARIABLE, "Cannot initialize SPRT - sprt_init (SPRT_REQ)");
+				    		goto done;
+				    	}
+
+				    	/* This will change the rtp stack to udptl mode */
+				    	msg.from = __FILE__;
+				    	msg.message_id = SWITCH_MESSAGE_INDICATE_UDPTL_MODE;
+				    	switch_core_session_receive_message(session, &msg);
+				    }
+				    continue;
+				}
+				break;
+
+			case SPRT_MODE_UNKNOWN:
+		   {
+		   		if (req_counter) {
+		   			if (!--req_counter) {
+		   				request_sprt(pvt);
+		   			}
+		   		}
+
+		   	if (switch_channel_test_app_flag_key("SPRT", channel, CF_APP_SPRT)) {
+		   		if (negotiate_sprt(pvt) == SPRT_MODE_NEGOTIATED) {
+		   			/* is is safe to call this again, it was already called above in AUDIO_MODE */
+		   			/* but this is the only way to set up the sprt stuff */
+		   			if (sprt_init(pvt, SPRT_MODE) == SWITCH_STATUS_SUCCESS) {
+		   				/* add to timer thread processing */
+		   				if (!add_pvt(pvt)) {
+		   					switch_channel_hangup(channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
+		   				}
+		   			} else {
+		   				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Cannot initialize SPRT - sprt_init (SPRT_UNKNOWN)\n");
+		   				switch_channel_set_variable(channel, SWITCH_CURRENT_APPLICATION_RESPONSE_VARIABLE, "Cannot initialize SPRT - sprt_init (SPRT_UNKNOWN)");
+		   				goto done;
+		   			}
+		   			continue;
+		   		}
+		   	}
+		   }
+				break;
+			case SPRT_MODE_NEGOTIATED:
+				break;
+			default:
+				break;
+		}
+	}
+
+	done: 
+
+	// destroy sprt structures - TODO
+
+	switch_channel_clear_app_flag_key("SPRT", channel, CF_APP_SPRT_POSSIBLE);
+
+	switch_core_session_set_read_codec(session, NULL);
+
+	if (switch_core_codec_ready(&read_codec)) {
+		switch_core_codec_destroy(&read_codec)
+	}
+
+	if (switch_core_codec_ready(&write_codec)) {
+		switch_core_codec_destroy(&write_codec)
+	}
+
+}
+
+void sprt_init () {
+
+}
+
+void configure_sprt() {
+
+}
+
+static void session_counter_increment(void)
+{
+	switch_mutex_lock(v150_globals.mutex);
+	v150_globals.total_sessions++;
+	switch_mutex_unlock(v150_globals.mutex);
+}
 
 /* Logging handler for SpanDSP library - might need for V150 debugging */
 void mod_v150_log_message(void *user_data, int level, const char *msg)
@@ -35,4 +295,39 @@ void mod_v150_log_message(void *user_data, int level, const char *msg)
 			fwrite(msg, strlen(msg) * sizeof(const char), 1, log_data->trace_file);
 		}
 	}
+}
+
+static pvt_t *pvt_init(switch_core_session_t *session, mod_sprt_application_mode_t app_mode)
+{
+	switch_channel_t *channel;
+	pvt_t *pvt = NULL;
+	const char *tmp;
+
+	channel = switch_core_session_get_channel(session);
+	switch_assert(channel != NULL);
+
+	if (!switch_channel_media_ready(channel)) {
+		switch_channel_answer(channel);
+	}
+
+	pvt = switch_core_session_alloc(session, sizeof(pvt_t));
+	pvt->session = session;
+
+	pvt->app_mode = app_mode;
+
+	switch(pvt->app_mode) {
+
+		case FUNCTION_TX:
+			pvt->caller = 1;
+			break;
+		case FUNCTION_RX:
+			pvt->caller = 0;
+			break;
+		case FUNCTION_GW:
+			break;
+	}
+
+	switch_mutex_init(&pvt->mutex, SWITCH_MUTEX_NESTED, switch_core_session_get_pool(session));
+
+	return pvt;
 }

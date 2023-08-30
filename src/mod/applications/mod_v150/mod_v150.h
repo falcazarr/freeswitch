@@ -53,3 +53,4 @@ typedef struct mod_v150_log_data mod_v150_log_data_t;
 
 void mod_v150_log_message(void *session, int level, const char *msg);
 switch_status_t load_configuration(switch_bool_t reload);
+switch_status_t v150_codecs_load(switch_loadable_module_interface_t **module_interface, switch_memory_pool_t *pool);
