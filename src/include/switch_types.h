@@ -1192,6 +1192,14 @@ typedef struct {
 	const char *sdp_o_line;
 } switch_t38_options_t;
 
+typedef struct {
+	const char *remote_ip;
+	uint16_t remote_port;
+	const char *local_ip;
+	uint16_t local_port;
+	const char *sdp_o_line;
+} switch_sprt_options_t;
+
 /*!
   \enum switch_stack_t
   \brief Expression of how to stack a list

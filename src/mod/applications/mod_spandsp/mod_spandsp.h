@@ -158,6 +158,8 @@ void mod_spandsp_fax_process_fax(switch_core_session_t *session, const char *dat
 void mod_spandsp_fax_stop_fax(switch_core_session_t *session);
 switch_bool_t t38_gateway_start(switch_core_session_t *session, const char *app, const char *data);
 
+void mod_spandsp_v150_sprt(switch_core_session_t *session, const char *data);
+
 switch_status_t spandsp_stop_inband_dtmf_session(switch_core_session_t *session);
 switch_status_t spandsp_inband_dtmf_session(switch_core_session_t *session);
 

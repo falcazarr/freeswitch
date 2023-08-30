@@ -48,6 +48,7 @@ struct spandsp_globals spandsp_globals = { 0 };
 
 #define SPANFAX_RX_USAGE "<filename>"
 #define SPANFAX_TX_USAGE "<filename>"
+#define V150_SPRT_USAGE ""
 
 SWITCH_MODULE_LOAD_FUNCTION(mod_spandsp_init);
 SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_spandsp_shutdown);
@@ -62,6 +63,11 @@ SWITCH_STANDARD_APP(spanfax_tx_function)
 SWITCH_STANDARD_APP(spanfax_rx_function)
 {
 	mod_spandsp_fax_process_fax(session, data, FUNCTION_RX);
+}
+
+SWITCH_STANDARD_APP(v150_sprt_function)
+{
+	mod_spandsp_v150_sprt(session, data);
 }
 
 SWITCH_STANDARD_APP(spanfax_stop_function)
@@ -828,6 +834,8 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_spandsp_init)
 	SWITCH_ADD_APP(app_interface, "t38_gateway", "Convert to T38 Gateway if tones are heard", "Convert to T38 Gateway if tones are heard",
 				   t38_gateway_function, "", SAF_MEDIA_TAP);
 
+	SWITCH_ADD_APP(app_interface, "sprt", "SPRT Negotiation", "SPRT Negotiation", v150_sprt_function, V150_SPRT_USAGE,
+				   SAF_SUPPORT_NOMEDIA | SAF_NO_LOOPBACK);
 	SWITCH_ADD_APP(app_interface, "rxfax", "FAX Receive Application", "FAX Receive Application", spanfax_rx_function, SPANFAX_RX_USAGE,
 				   SAF_SUPPORT_NOMEDIA | SAF_NO_LOOPBACK);
 	SWITCH_ADD_APP(app_interface, "txfax", "FAX Transmit Application", "FAX Transmit Application", spanfax_tx_function, SPANFAX_TX_USAGE,
