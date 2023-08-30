@@ -70,8 +70,24 @@ switch_status_t load_configuration(switch_bool_t reload)
     switch_status_t status = SWITCH_STATUS_FALSE;
 
     switch_mutex_lock(v150_globals.mutex);
-    /* TODO Load configuration below ... */
 
+    if (v150_globals.config_pool) {
+		switch_core_destroy_memory_pool(&v150_globals.config_pool);
+	}
+
+	switch_core_new_memory_pool(&v150_globals.config_pool);
+
+    v150_globals.enable_sprt = 1;
+    v150_globals.total_sessions = 0;
+    v150_globals.verbose = 0;
+    v150_globals.verbose_log_level = SWITCH_LOG_DEBUG;
+    v150_globals.ident = "V150 SPRT Ident";
+    v150_globals.header = "V150 SPRT Header";
+    v150_globals.timezone = "";
+    v150_globals.sprt_tx_reinvite_packet_count = 100;
+    v150_globals.sprt_rx_reinvite_packet_count = 50;
+
+    // TODO - Investigate XML config and config_pool
 
     /* Unlock before exitting function*/
     switch_mutex_unlock(v150_globals.mutex);

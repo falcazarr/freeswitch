@@ -13,8 +13,7 @@ typedef enum {
 	SPRT_MODE_REFUSED = -1,
 } sprt_mode_t;
 
-const char * get_sprt_status(sprt_mode_t mode)
-{
+const char * get_sprt_status(sprt_mode_t mode) {
 	const char *str = "off";
 	switch(mode) {
 	case SPRT_MODE_NEGOTIATED:
@@ -34,7 +33,7 @@ const char * get_sprt_status(sprt_mode_t mode)
 
 struct pvt_s {
 	switch_core_session_t *session;
-	mod_sprt_application_mode_t app_mode;
+	mod_v150_application_mode_t app_mode;
 	switch_mutex_t *mutex;
 	udptl_state_t *udptl_state;
 	char *ident;
@@ -76,7 +75,6 @@ static int add_pvt(pvt_t *pvt)
 	}
 
 	return r;
-
 }
 
 static int del_pvt(pvt_t *del_pvt)
@@ -132,7 +130,8 @@ static void launch_timer_thread(void)
 	switch_thread_create(&sprt_state_list.thread, thd_attr, timer_thread_run, NULL, v150_globals.pool);
 }
 
-void send_reinvite_with_sdp_payload(switch_core_session_t *session, mod_sprt_application_mode_t app_mode){
+void send_reinvite_with_sdp_payload(switch_core_session_t *session, mod_v150_application_mode_t app_mode)
+{
 	pvt_t *pvt;
 	switch_channel_t *channel = switch_core_session_get_channel(session);
 	switch_codec_t read_codec = { 0 };
@@ -247,12 +246,88 @@ void send_reinvite_with_sdp_payload(switch_core_session_t *session, mod_sprt_app
 
 }
 
-void sprt_init () {
+void sprt_init () 
+{
 
 }
 
-void configure_sprt() {
+static sprt_mode_t configure_sprt(pvt_t *pvt) 
+{
+	switch_core_session_t *session;
+	switch_channel_t *channel;
+	switch_sprt_options_t *sprt_options;
+	int method = 2;
 
+	switch_assert(pvt && pvt->session);
+	session = pvt->session;
+	channel = switch_core_session_get_channel(session);
+	sprt_options = switch_channel_get_private(channel, "sprt_options");
+
+	if (!sprt_options) {
+		pvt->sprt_mode = SPRT_MODE_REFUSED;
+		return pvt->sprt_mode;
+	}
+
+	return pvt->sprt_mode;
+}
+
+static sprt_mode_t negotiate_sprt(pvt_t *pvt) 
+{
+	switch_core_session_t *session = pvt->session;
+	switch_channel_t *channel = switch_core_session_get_channel(session);
+	switch_core_session_message_t msg = { 0 };
+	switch_sprt_options_t *sprt_options = switch_channel_get_private(channel, "sprt_options");
+	int enabled = 0, insist = 0;
+	const char *v;
+
+	pvt->sprt_mode = SPRT_MODE_REFUSED;
+	// TODO - add the rest of the functionality here
+
+	return pvt->sprt_mode;
+}
+
+static sprt_mode_t request_sprt(pvt_t *pvt) 
+{
+	switch_core_session_t *session = pvt->session;
+	switch_channel_t *channel = switch_core_session_get_channel(session);
+	switch_core_session_message_t msg = { 0 };
+	switch_sprt_options_t *sprt_options = NULL;
+	int enabled = 0, insist = 0;
+	const char *v;
+
+	pvt->sprt_mode = SPRT_MODE_UNKNOWN;
+	enabled = 1; // Set the sprt_options unless they already exist
+
+	if (switch_channel_get_private(channel, "sprt_options")) {
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING,
+				"%s already has SPRT data\n", switch_channel_get_name(channel));
+		enabled = 0;
+	}
+
+	if (enabled) {
+		if (!(sprt_options = switch_channel_get_private(channel, "_preconfigured_sprt_options"))) {
+			sprt_options = switch_core_session_alloc(session, sizeof(*sprt_options));
+			sprt_options->modem_relay_type = 0;
+			sprt_options->media_gateway_type = 0;
+			sprt_options->mr_mods = 0;
+			sprt_options->cdsc_select = 0;
+			sprt_options->jm_delay = SWITCH_FALSE;
+		}
+
+		switch_channel_set_private(channel, "sprt_options", sprt_options);
+		switch_channel_set_private(channel, "_preconfigured_sprt_options", NULL);
+
+		pvt->sprt_mode = SPRT_MODE_REQUESTED;
+		switch_channel_set_app_flag_key("SPRT", channel, CF_APP_SPRT_REQ;
+
+		/* This will send a request for sprt mode */
+		msg.from = __FILE__;
+		msg.message_id = SWITCH_MESSAGE_INDICATE_REQUEST_SPRT_MEDIA;
+		msg.numeric_arg = insist;
+		switch_core_session_receive_message(session, &msg);
+	}
+
+	return pvt->sprt_mode;
 }
 
 static void session_counter_increment(void)
@@ -297,7 +372,7 @@ void mod_v150_log_message(void *user_data, int level, const char *msg)
 	}
 }
 
-static pvt_t *pvt_init(switch_core_session_t *session, mod_sprt_application_mode_t app_mode)
+static pvt_t *pvt_init(switch_core_session_t *session, mod_v150_application_mode_t app_mode)
 {
 	switch_channel_t *channel;
 	pvt_t *pvt = NULL;

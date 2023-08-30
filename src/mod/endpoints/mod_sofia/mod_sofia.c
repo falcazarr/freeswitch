@@ -1727,6 +1727,26 @@ static switch_status_t sofia_receive_message(switch_core_session_t *session, swi
 			}
 		}
 		break;
+	
+	case SWITCH_MESSAGE_INDICATE_REQUEST_SPRT_MEDIA:
+		{
+			switch_sprt_options_t *sprt_options = switch_channel_get_private(tech_pvt->channel, "sprt_options");
+
+			if (sprt_options) {
+				//switch_core_media_set_udptl_image_sdp(tech_pvt->session, t38_options, msg->numeric_arg);
+				//switch_core_media_set_udptl_sprt_sdp(tech_pvt->session, sprt_options, msg->numeric_arg);
+
+				if (!switch_channel_test_flag(channel, CF_PROXY_MEDIA)) {
+					switch_channel_set_flag(channel, CF_REQ_MEDIA);
+				}
+				sofia_set_flag_locked(tech_pvt, TFLAG_SENT_UPDATE);
+				sofia_glue_do_invite(session);
+			} else {
+				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "%s Request to send via SPRT on channel with no SPRT options.\n",
+								  switch_channel_get_name(channel));
+			}
+		}
+		break;
 
 	case SWITCH_MESSAGE_INDICATE_3P_NOMEDIA:
 		{

@@ -35,7 +35,7 @@ typedef enum {
 	FUNCTION_TX,
 	FUNCTION_RX,
 	FUNCTION_GW
-} mod_sprt_application_mode_t;
+} mod_v150_application_mode_t;
 
 typedef enum {
 	SPRT_MODE_AUDIO,
