@@ -1709,6 +1709,52 @@ static switch_status_t sofia_receive_message(switch_core_session_t *session, swi
 		}
 		break;
 
+	case SWITCH_MESSAGE_INDICATE_SPRT_DESCRIPTION:
+		{
+			switch_sprt_options_t *sprt_options = switch_channel_get_private(tech_pvt->channel, "sprt_options");
+			const char *session_id_header = sofia_glue_session_id_header(tech_pvt->session, tech_pvt->profile);
+
+			if (!sprt_options) {
+				nua_respond(tech_pvt->nh, SIP_488_NOT_ACCEPTABLE, TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)), TAG_END());
+				goto end_lock;
+			}
+
+			//TODO: switch_core_media_start_udptl(tech_pvt->session, sprt_options);
+
+			//TODO: switch_core_media_set_udptl_sprt_sdp(tech_pvt->session, sprt_options, msg->numeric_arg);
+
+			if (!sofia_test_flag(tech_pvt, TFLAG_BYE)) {
+				char *extra_headers = sofia_glue_get_extra_headers(channel, SOFIA_SIP_RESPONSE_HEADER_PREFIX);
+				if (sofia_use_soa(tech_pvt)) {
+					nua_respond(tech_pvt->nh, SIP_200_OK,
+								NUTAG_AUTOANSWER(0),
+								SIPTAG_CONTACT_STR(tech_pvt->reply_contact),
+								SIPTAG_CALL_INFO_STR(switch_channel_get_variable(tech_pvt->channel, SOFIA_SIP_HEADER_PREFIX "call_info")),
+								SOATAG_USER_SDP_STR(tech_pvt->mparams.local_sdp_str),
+								SOATAG_REUSE_REJECTED(1),
+								SOATAG_ORDERED_USER(1),
+								SOATAG_AUDIO_AUX("cn telephone-event"), NUTAG_INCLUDE_EXTRA_SDP(1),
+								TAG_IF(!zstr(extra_headers), SIPTAG_HEADER_STR(extra_headers)),
+								TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
+								TAG_END());
+				} else {
+					nua_respond(tech_pvt->nh, SIP_200_OK,
+								NUTAG_AUTOANSWER(0),
+								NUTAG_MEDIA_ENABLE(0),
+								SIPTAG_CONTACT_STR(tech_pvt->reply_contact),
+								SIPTAG_CALL_INFO_STR(switch_channel_get_variable(tech_pvt->channel, SOFIA_SIP_HEADER_PREFIX "call_info")),
+								SIPTAG_CONTENT_TYPE_STR("application/sdp"),
+								SIPTAG_PAYLOAD_STR(tech_pvt->mparams.local_sdp_str),
+								TAG_IF(!zstr(extra_headers), SIPTAG_HEADER_STR(extra_headers)),
+								TAG_IF(!zstr(session_id_header), SIPTAG_HEADER_STR(session_id_header)),
+								TAG_END());
+				}
+				switch_safe_free(extra_headers);
+				sofia_set_flag_locked(tech_pvt, TFLAG_ANS);
+			}
+		}
+		break;
+
 	case SWITCH_MESSAGE_INDICATE_REQUEST_IMAGE_MEDIA:
 		{
 			switch_t38_options_t *t38_options = switch_channel_get_private(tech_pvt->channel, "t38_options");
@@ -1733,8 +1779,7 @@ static switch_status_t sofia_receive_message(switch_core_session_t *session, swi
 			switch_sprt_options_t *sprt_options = switch_channel_get_private(tech_pvt->channel, "sprt_options");
 
 			if (sprt_options) {
-				//switch_core_media_set_udptl_image_sdp(tech_pvt->session, t38_options, msg->numeric_arg);
-				//switch_core_media_set_udptl_sprt_sdp(tech_pvt->session, sprt_options, msg->numeric_arg);
+				switch_core_media_set_udptl_sprt_sdp(tech_pvt->session, sprt_options, msg->numeric_arg);
 
 				if (!switch_channel_test_flag(channel, CF_PROXY_MEDIA)) {
 					switch_channel_set_flag(channel, CF_REQ_MEDIA);

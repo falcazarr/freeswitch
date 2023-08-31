@@ -2,6 +2,7 @@
 #include "udptl.h"
 
 typedef enum {
+	AUDIO_MODE,
 	SPRT_MODE,
 	VBD_MODE,
 } transport_mode_t;
@@ -130,7 +131,7 @@ static void launch_timer_thread(void)
 	switch_thread_create(&sprt_state_list.thread, thd_attr, timer_thread_run, NULL, v150_globals.pool);
 }
 
-void send_reinvite_with_sdp_payload(switch_core_session_t *session, mod_v150_application_mode_t app_mode)
+void mod_v150_process_sprt(switch_core_session_t *session, mod_v150_application_mode_t app_mode)
 {
 	pvt_t *pvt;
 	switch_channel_t *channel = switch_core_session_get_channel(session);
@@ -162,6 +163,15 @@ void send_reinvite_with_sdp_payload(switch_core_session_t *session, mod_v150_app
 		if (!SWITCH_READ_ACCEPTABLE(status) || pvt->done) {
 			goto done;
 		}
+
+		switch_ivr_sleep(session, 250, SWITCH_TRUE, NULL); // Required after codec initialization - TODO still need to add
+
+		if (pvt->app_mode == FUNCTION_TX) {
+	  		req_counter = v150_globals.sprt_tx_reinvite_packet_count;
+	  } else {
+	  		req_counter = v150_globals.sprt_rx_reinvite_packet_count;
+		}
+
 
 		switch (pvt->sprt_mode) {
 			case SPRT_MODE_REQUESTED:
@@ -204,8 +214,7 @@ void send_reinvite_with_sdp_payload(switch_core_session_t *session, mod_v150_app
 
 		   	if (switch_channel_test_app_flag_key("SPRT", channel, CF_APP_SPRT)) {
 		   		if (negotiate_sprt(pvt) == SPRT_MODE_NEGOTIATED) {
-		   			/* is is safe to call this again, it was already called above in AUDIO_MODE */
-		   			/* but this is the only way to set up the sprt stuff */
+
 		   			if (sprt_init(pvt, SPRT_MODE) == SWITCH_STATUS_SUCCESS) {
 		   				/* add to timer thread processing */
 		   				if (!add_pvt(pvt)) {
@@ -246,9 +255,42 @@ void send_reinvite_with_sdp_payload(switch_core_session_t *session, mod_v150_app
 
 }
 
-void sprt_init () 
+static switch_status_t sprt_init (pvt_t *pvt, transport_mode_t trans_mode) 
 {
+	switch_core_session_t *session;
+	switch_channel_t *channel;
+	const char *tmp;
 
+	session = (switch_core_session_t *) pvt->session;
+	switch_assert(session);
+
+	channel = switch_core_session_get_channel(session);
+	switch_assert(channel);
+
+	switch (trans_mode) {
+
+	case AUDIO_MODE:
+		break;
+
+	case SPRT_MODE:
+		switch_core_session_message_t msg = { 0 };
+
+		msg.from = __FILE__;
+		msg.message_id = SWITCH_MESSAGE_INDICATE_UDPTL_MODE;
+		switch_core_session_receive_message(pvt->session, &msg);
+
+		break;
+
+	case VBD_MODE:
+		break;
+
+	default:
+		assert(0);
+		break;
+
+	}							/* Switch trans mode */
+
+	return SWITCH_STATUS_SUCCESS;
 }
 
 static sprt_mode_t configure_sprt(pvt_t *pvt) 
@@ -281,7 +323,53 @@ static sprt_mode_t negotiate_sprt(pvt_t *pvt)
 	const char *v;
 
 	pvt->sprt_mode = SPRT_MODE_REFUSED;
-	// TODO - add the rest of the functionality here
+
+	if (pvt->app_mode == FUNCTION_GW) {
+		enabled = 1;
+	} else {
+		enabled = v150_globals.enable_sprt;
+	}
+
+	if (!(enabled && sprt_options)) {
+		/* if there is no sprt_options the endpoint will refuse the transition */
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "%s NO SPRT options detected.\n", switch_channel_get_name(channel));
+		switch_channel_set_private(channel, "sprt_options", NULL);
+	} else {
+		pvt->sprt_mode = SPRT_MODE_NEGOTIATED;
+		switch_channel_set_app_flag_key("SPRT", channel, CF_APP_SPRT_NEGOTIATED);
+
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_INFO,
+			"SPRT SDP Origin = %s\n"
+			"SPRT ModemRelayType = %d\n"
+			"SPRT MediaGatewayType = %d\n"
+			"SPRT ModemRelayModulations = %d\n"
+			"SPRT CallDiscriminationSelect = %d\n"
+			"SPRT JMDelay = %d\n"
+			"ip = '%s'\n"
+			"port = %d\n",
+			sprt_options->sdp_o_line,
+			sprt_options->modem_relay_type,
+			sprt_options->media_gateway_type,
+			sprt_options->mr_mods,
+			sprt_options->cdsc_select,
+			sprt_options->jm_delay,
+			sprt_options->remote_ip ? sprt_options->remote_ip : "Not specified",
+			sprt_options->remote_port);
+
+		// Keep defaults for now - Negotiation happens here 
+	}
+
+	if ((v = switch_channel_get_variable(channel, "enable_sprt_insist"))) {
+		insist = switch_true(v);
+	} else {
+		insist = v150_globals.enable_sprt_insist;
+	}
+
+	/* This will send the options back in a response */
+	msg.from = __FILE__;
+	msg.message_id = SWITCH_MESSAGE_INDICATE_SPRT_DESCRIPTION;
+	msg.numeric_arg = insist;
+	switch_core_session_receive_message(session, &msg);
 
 	return pvt->sprt_mode;
 }
@@ -387,8 +475,8 @@ static pvt_t *pvt_init(switch_core_session_t *session, mod_v150_application_mode
 
 	pvt = switch_core_session_alloc(session, sizeof(pvt_t));
 	pvt->session = session;
-
 	pvt->app_mode = app_mode;
+	pvt->sprt_mode = SPRT_MODE_UNKNOWN;
 
 	switch(pvt->app_mode) {
 

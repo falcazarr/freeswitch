@@ -1,4 +1,5 @@
 #include <switch.h>
+#include <spandsp.h>
 
 /* The global stuff */
 struct v150_globals {
@@ -54,3 +55,4 @@ typedef struct mod_v150_log_data mod_v150_log_data_t;
 void mod_v150_log_message(void *session, int level, const char *msg);
 switch_status_t load_configuration(switch_bool_t reload);
 switch_status_t v150_codecs_load(switch_loadable_module_interface_t **module_interface, switch_memory_pool_t *pool);
+void mod_v150_process_sprt(switch_core_session_t *session, mod_v150_application_mode_t app_mode);

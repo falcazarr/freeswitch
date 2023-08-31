@@ -11920,6 +11920,10 @@ SWITCH_DECLARE(void) switch_core_media_set_udptl_image_sdp(switch_core_session_t
 
 }
 
+SWITCH_DECLARE(void) switch_core_media_set_udptl_sprt_sdp(switch_core_session_t *session, switch_sprt_options_t *sprt_options, int insist)
+{
+	return;
+}
 
 
 //?

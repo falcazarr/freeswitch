@@ -10,7 +10,13 @@ SWITCH_MODULE_DEFINITION(mod_v150, mod_v150_load, mod_v150_shutdown, NULL);
 SWITCH_STANDARD_APP(v150_sprt_tx_function)
 {
     switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "SPRT TX Application executed!\n");
-    send_reinvite_with_sdp_payload(session, FUNCTION_TX);
+    mod_v150_process_sprt(session, FUNCTION_TX);
+}
+
+SWITCH_STANDARD_APP(v150_sprt_rx_function)
+{
+    switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "SPRT RX Application executed!\n");
+    mod_v150_process_sprt(session, FUNCTION_RX);
 }
 
 SWITCH_STANDARD_API(v150_sprt_tx_api)
@@ -35,6 +41,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_v150_load)
     switch_mutex_init(&v150_globals.mutex, SWITCH_MUTEX_NESTED, pool);
 
     SWITCH_ADD_APP(app_interface, "sprt_tx", "V150 SPRT Application", "V150 SPRT Application", v150_sprt_tx_function, "", SAF_NONE);
+    SWITCH_ADD_APP(app_interface, "sprt_rx", "V150 SPRT Application", "V150 SPRT Application", v150_sprt_rx_function, "", SAF_NONE);
     SWITCH_ADD_API(api_interface, "v150_sprt_tx", "V150 API - sprt tx", v150_sprt_tx_api, "");
 
     load_configuration(SWITCH_FALSE);
