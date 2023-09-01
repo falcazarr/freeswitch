@@ -1194,14 +1194,14 @@ typedef struct {
 	const char *sdp_o_line;
 } switch_t38_options_t;
 
-typdef struct {
+typedef struct {
 	uint8_t modem_relay_type;
 	uint8_t media_gateway_type;
 	uint8_t mr_mods;
 	uint8_t cdsc_select;
 	switch_bool_t jm_delay;
 	const char *media_entry;
-	const char *attribute entry;
+	const char *attribute_entry;
 	const char *remote_ip;
 	uint16_t remote_port;
 	const char *local_ip;
