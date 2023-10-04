@@ -70,7 +70,7 @@ static int add_pvt(pvt_t *pvt)
 		sprt_state_list.head = pvt;
 		switch_mutex_unlock(sprt_state_list.mutex);
 		r = 1;
-		wake_thread(0);
+		//wake_thread(0);
 	} else {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "Error launching thread\n");
 	}
@@ -93,6 +93,7 @@ static int del_pvt(pvt_t *del_pvt)
 			} else {
 				sprt_state_list.head = p->next;
 			}
+			switch_safe_free(del_pvt)
 			p->next = NULL;
 			r = 1;
 			break;
@@ -103,11 +104,13 @@ static int del_pvt(pvt_t *del_pvt)
 
 	switch_mutex_unlock(sprt_state_list.mutex);
 
-	wake_thread(0);
+	//wake_thread(0);
 
 	return r;
 }
 
+/**  WILL ADD BACK IN WHEN SOFTTIMER IS REQUIRED FOR IMPLEMENTATION
+ 
 static void wake_thread(int force)
 {
 	if (force) {
@@ -130,6 +133,51 @@ static void launch_timer_thread(void)
 	switch_threadattr_stacksize_set(thd_attr, SWITCH_THREAD_STACKSIZE);
 	switch_thread_create(&sprt_state_list.thread, thd_attr, timer_thread_run, NULL, v150_globals.pool);
 }
+
+static void *SWITCH_THREAD_FUNC timer_thread_run(switch_thread_t *thread, void *obj)
+{
+	switch_timer_t timer = { 0 };
+	pvt_t *pvt;
+	int samples = 160;
+	int ms = 20;
+
+	if (switch_core_timer_init(&timer, "soft", ms, samples, NULL) != SWITCH_STATUS_SUCCESS) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "timer init failed.\n");
+		t38_state_list.thread_running = -1;
+		goto end;
+	}
+
+	sprt_state_list.thread_running = 1;
+	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "SPRT timer thread started.\n");
+
+	switch_mutex_lock(v150_globals.cond_mutex);
+
+	while(sprt_state_list.thread_running == 1) {
+
+		switch_mutex_lock(sprt_state_list.mutex);
+
+		if (!sprt_state_list.head) {
+			switch_mutex_unlock(sprt_state_list.mutex);
+			switch_thread_cond_wait(v150_globals.cond, v150_globals.cond_mutex);
+			switch_core_timer_sync(&timer);
+			continue;
+		}
+
+		for (pvt = sprt_state_list.head; pvt; pvt = pvt->next) {
+			if (pvt->udptl_state && pvt->session && switch_channel_ready(switch_core_session_get_channel(pvt->session))) {
+				switch_mutex_lock(pvt->mutex);
+				// TODO: Add handling for sprt_state_list.head->sprt_mode - every 20ms
+				switch_mutex_unlock(pvt->mutex);
+			}
+		}
+
+		switch_mutex_unlock(sprt_state_list.mutex);
+
+		switch_core_timer_next(&timer);
+	}
+}
+
+**/
 
 void mod_v150_process_sprt(switch_core_session_t *session, mod_v150_application_mode_t app_mode)
 {

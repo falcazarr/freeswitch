@@ -30,7 +30,7 @@ SWITCH_STANDARD_API(v150_sprt_tx_api)
 
 static void event_handler(switch_event_t *event)
 {
-	load_configuration(SWITCH_FALSE);
+	load_configuration(SWITCH_TRUE);
 }
 
 
@@ -103,6 +103,7 @@ switch_status_t load_configuration(switch_bool_t reload)
 
     /* Unlock before exitting function*/
     switch_mutex_unlock(v150_globals.mutex);
+    status = SWITCH_STATUS_SUCCESS;
 
     return status;
 }

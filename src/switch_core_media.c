@@ -11922,7 +11922,88 @@ SWITCH_DECLARE(void) switch_core_media_set_udptl_image_sdp(switch_core_session_t
 
 SWITCH_DECLARE(void) switch_core_media_set_udptl_sprt_sdp(switch_core_session_t *session, switch_sprt_options_t *sprt_options, int insist)
 {
-	return;
+	char buf[2048] = "";
+	const char *ip;
+	uint32_t port;
+	const char *family = "IP4";
+	const char *username;
+	switch_media_handle_t *smh;
+	switch_rtp_engine_t *a_engine;
+
+	switch_assert(session);
+
+	if (!(smh = session->media_handle)) {
+		return;
+	}
+
+	a_engine = &smh->engines[SWITCH_MEDIA_TYPE_AUDIO];
+
+	switch_channel_clear_flag(session->channel, CF_IMAGE_SDP);
+
+	switch_assert(sprt_options);
+
+	ip = sprt_options->local_ip;
+	port = sprt_options->local_port;
+	username = smh->mparams->sdp_username;
+
+	if (!ip) {
+		if (!(ip = a_engine->adv_sdp_ip)) {
+			ip = a_engine->proxy_sdp_ip;
+		}
+	}
+
+	if (!ip) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "%s NO IP!\n", switch_channel_get_name(session->channel));
+		return;
+	}
+
+	if (!port) {
+		if (!(port = a_engine->adv_sdp_port)) {
+			port = a_engine->proxy_sdp_port;
+		}
+	}
+
+	if (!port) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "%s NO PORT!\n", switch_channel_get_name(session->channel));
+		return;
+	}
+
+	if (!smh->owner_id) {
+		smh->owner_id = (uint32_t) switch_epoch_time_now(NULL) - port;
+	}
+
+	if (!smh->session_id) {
+		smh->session_id = smh->owner_id;
+	}
+
+	smh->session_id++;
+
+	family = strchr(ip, ':') ? "IP6" : "IP4";
+
+
+	switch_snprintf(buf, sizeof(buf),
+					"v=0\r\n"
+					"o=%s %010u %010u IN %s %s\r\n"
+					"s=%s\r\n" "c=IN %s %s\r\n" "t=0 0\r\n", username, smh->owner_id, smh->session_id, family, ip, username, family, ip);
+
+	if (stream_rejected(smh, sdp_media_audio)) {
+		switch_snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+						"m=audio 0 RTP/AVP 0\r\n");
+	}
+
+	switch_snprintf(buf + strlen(buf), sizeof(buf) - strlen(buf),
+					"m=audio %d udpsprt 100\r\n"
+					"a=sprtmap:100 v150mr/8000\r\n"
+					"a=fmtp:100 mr=0; mg=1; CDSCselect=3; mrmods=1,2; jmdealy=no;versn=1.1\r\n",
+					port);
+
+
+	switch_core_media_set_local_sdp(session, buf, SWITCH_TRUE);
+
+
+	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "%s SPRT media sdp:\n%s\n",
+					  switch_channel_get_name(session->channel), smh->mparams->local_sdp_str);
+
 }
 
 
